@@ -9,6 +9,7 @@ sites:
 
 status-website:
   baseUrl: /bayezon-status
+  name: ""
   logoUrl: https://raw.githubusercontent.com/tomssbayezon/bayezon-status/master/assets/logo.webp
   favicon: https://raw.githubusercontent.com/tomssbayezon/bayezon-status/master/assets/favicon.ico
   introTitle: "Bayezon service status"
