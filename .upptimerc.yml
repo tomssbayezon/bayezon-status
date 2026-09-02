@@ -6,15 +6,19 @@ sites:
     url: https://prod-sunny.bayezon.ai/loader.js
   - name: Rodd & Gunn Storefront Loader
     url: https://roddandgunn-product-loader.bayezon.com/loader.js
-  - name: Rodd & Gunn Failing Loader
-    url: https://roddandgunn-loader.bayezon.com/loader.js
 
 status-website:
   baseUrl: /bayezon-status
   name: Bayezon
-  introTitle: "**Bayezon** service status"
-  introMessage: Live status of Bayezon platform services.
+  logoUrl: https://raw.githubusercontent.com/tomssbayezon/bayezon-status/master/assets/logo.webp
+  favicon: https://raw.githubusercontent.com/tomssbayezon/bayezon-status/master/assets/favicon.ico
+  introTitle: "Bayezon service status"
+  introMessage: Real-time availability of Bayezon platform services. Subscribe to this page for incident updates.
   theme: light
   navbar:
     - title: Status
-      href: /
+      href: /bayezon-status
+    - title: Bayezon
+      href: https://www.bayezon.ai
+  i18n:
+    footer: "© Bayezon AI"
