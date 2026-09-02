@@ -10,7 +10,7 @@ sites:
     url: https://roddandgunn-loader.bayezon.com/loader.js
 
 status-website:
-  baseUrl: /status
+  baseUrl: /bayezon-status
   name: Bayezon
   introTitle: "**Bayezon** service status"
   introMessage: Live status of Bayezon platform services.
