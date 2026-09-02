@@ -10,11 +10,11 @@
     "uptimeWeek": "100.00%",
     "uptimeMonth": "100.00%",
     "uptimeYear": "100.00%",
-    "time": 149,
-    "timeDay": 149,
-    "timeWeek": 149,
-    "timeMonth": 149,
-    "timeYear": 149,
+    "time": 262,
+    "timeDay": 262,
+    "timeWeek": 262,
+    "timeMonth": 262,
+    "timeYear": 262,
     "dailyMinutesDown": {}
   },
   {
@@ -28,31 +28,11 @@
     "uptimeWeek": "100.00%",
     "uptimeMonth": "100.00%",
     "uptimeYear": "100.00%",
-    "time": 163,
-    "timeDay": 163,
-    "timeWeek": 163,
-    "timeMonth": 163,
-    "timeYear": 163,
+    "time": 193,
+    "timeDay": 193,
+    "timeWeek": 193,
+    "timeMonth": 193,
+    "timeYear": 193,
     "dailyMinutesDown": {}
-  },
-  {
-    "name": "Rodd & Gunn Failing Loader",
-    "url": "https://roddandgunn-loader.bayezon.com/loader.js",
-    "icon": "https://icons.duckduckgo.com/ip3/roddandgunn-loader.bayezon.com.ico",
-    "slug": "rodd-and-gunn-failing-loader",
-    "status": "down",
-    "uptime": "2.21%",
-    "uptimeDay": "2.21%",
-    "uptimeWeek": "2.21%",
-    "uptimeMonth": "2.21%",
-    "uptimeYear": "2.21%",
-    "time": 0,
-    "timeDay": 0,
-    "timeWeek": 0,
-    "timeMonth": 0,
-    "timeYear": 0,
-    "dailyMinutesDown": {
-      "2026-09-02": 16
-    }
   }
 ]
