@@ -13,7 +13,7 @@ status-website:
   logoUrl: https://raw.githubusercontent.com/tomssbayezon/bayezon-status/master/assets/logo.webp
   favicon: https://raw.githubusercontent.com/tomssbayezon/bayezon-status/master/assets/favicon.ico
   introTitle: "Bayezon service status"
-  introMessage: Real-time availability of Bayezon platform services. Subscribe to this page for incident updates.
+  introMessage: Current availability of Bayezon platform services, checked every five minutes.
   theme: light
   navbar:
     - title: Status
