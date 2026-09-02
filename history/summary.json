@@ -41,18 +41,18 @@
     "icon": "https://icons.duckduckgo.com/ip3/roddandgunn-loader.bayezon.com.ico",
     "slug": "rodd-and-gunn-failing-loader",
     "status": "down",
-    "uptime": "4.54%",
-    "uptimeDay": "4.54%",
-    "uptimeWeek": "4.54%",
-    "uptimeMonth": "4.54%",
-    "uptimeYear": "4.54%",
+    "uptime": "2.21%",
+    "uptimeDay": "2.21%",
+    "uptimeWeek": "2.21%",
+    "uptimeMonth": "2.21%",
+    "uptimeYear": "2.21%",
     "time": 0,
     "timeDay": 0,
     "timeWeek": 0,
     "timeMonth": 0,
     "timeYear": 0,
     "dailyMinutesDown": {
-      "2026-09-02": 8
+      "2026-09-02": 16
     }
   }
 ]
