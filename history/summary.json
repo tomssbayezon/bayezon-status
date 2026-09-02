@@ -10,11 +10,11 @@
     "uptimeWeek": "100.00%",
     "uptimeMonth": "100.00%",
     "uptimeYear": "100.00%",
-    "time": 229,
-    "timeDay": 229,
-    "timeWeek": 229,
-    "timeMonth": 229,
-    "timeYear": 229,
+    "time": 182,
+    "timeDay": 182,
+    "timeWeek": 182,
+    "timeMonth": 182,
+    "timeYear": 182,
     "dailyMinutesDown": {}
   },
   {
@@ -28,11 +28,11 @@
     "uptimeWeek": "100.00%",
     "uptimeMonth": "100.00%",
     "uptimeYear": "100.00%",
-    "time": 201,
-    "timeDay": 201,
-    "timeWeek": 201,
-    "timeMonth": 201,
-    "timeYear": 201,
+    "time": 167,
+    "timeDay": 167,
+    "timeWeek": 167,
+    "timeMonth": 167,
+    "timeYear": 167,
     "dailyMinutesDown": {}
   },
   {
@@ -41,18 +41,18 @@
     "icon": "https://icons.duckduckgo.com/ip3/roddandgunn-loader.bayezon.com.ico",
     "slug": "rodd-and-gunn-failing-loader",
     "status": "down",
-    "uptime": "70.75%",
-    "uptimeDay": "70.75%",
-    "uptimeWeek": "70.75%",
-    "uptimeMonth": "70.75%",
-    "uptimeYear": "70.75%",
+    "uptime": "11.36%",
+    "uptimeDay": "11.36%",
+    "uptimeWeek": "11.36%",
+    "uptimeMonth": "11.36%",
+    "uptimeYear": "11.36%",
     "time": 0,
     "timeDay": 0,
     "timeWeek": 0,
     "timeMonth": 0,
     "timeYear": 0,
     "dailyMinutesDown": {
-      "2026-09-02": 0
+      "2026-09-02": 3
     }
   }
 ]
