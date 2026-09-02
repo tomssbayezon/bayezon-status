@@ -6,6 +6,8 @@ sites:
     url: https://prod-sunny.bayezon.ai/loader.js
   - name: Rodd & Gunn Storefront Loader
     url: https://roddandgunn-product-loader.bayezon.com/loader.js
+  - name: Rodd & Gunn Failing Loader
+    url: https://roddandgunn-loader.bayezon.com/loader.js
 
 status-website:
   baseUrl: /status
