@@ -1,9 +1,12 @@
-const functions = require("@google-cloud/functions-framework");
+import functions from "@google-cloud/functions-framework";
+
+import { getConfig } from "./src/config.js";
+import { HealthChecker } from "./src/health-checker.js";
 
 /**
- * Health Check Endpoint
+ * Health Check Cloud Function.
  *
- * Aggregates health status from multiple services defined in
+ * Aggregates health status from services defined in the
  * HEALTH_CHECK_ENDPOINTS environment variable (comma-separated URLs).
  *
  * Returns:
@@ -16,8 +19,9 @@ functions.http("healthCheck", async (req, res) => {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const endpointsRaw = process.env.HEALTH_CHECK_ENDPOINTS;
-  if (!endpointsRaw) {
+  const { endpoints, timeoutMs } = getConfig();
+
+  if (endpoints.length === 0) {
     return res.status(200).json({
       status: "healthy",
       timestamp: new Date().toISOString(),
@@ -25,64 +29,10 @@ functions.http("healthCheck", async (req, res) => {
     });
   }
 
-  const endpoints = endpointsRaw
-    .split(",")
-    .map((url) => url.trim())
-    .filter(Boolean);
+  const checker = new HealthChecker(endpoints, { timeoutMs });
+  const result = await checker.checkAll();
 
-  const results = await Promise.allSettled(
-    endpoints.map(async (url) => {
-      const startTime = Date.now();
-      try {
-        // TODO: Add custom headers or auth tokens if required by endpoints
-        const response = await fetch(url, {
-          method: "GET",
-          // TODO: Add timeout once requirements are finalized
-        });
-
-        const responseTime = Date.now() - startTime;
-
-        // TODO: Parse response body based on each endpoint's response format
-        // Expected formats may vary (JSON, plain text, etc.)
-
-        const isUp = response.ok;
-        return {
-          url,
-          status: isUp ? "up" : "down",
-          statusCode: response.status,
-          responseTime,
-        };
-      } catch (error) {
-        const responseTime = Date.now() - startTime;
-        return {
-          url,
-          status: "down",
-          statusCode: null,
-          error: error.message,
-          responseTime,
-        };
-      }
-    })
-  );
-
-  const services = results.map((result) => {
-    if (result.status === "fulfilled") {
-      return result.value;
-    }
-    return {
-      url: "unknown",
-      status: "down",
-      statusCode: null,
-      error: result.reason?.message || "Unknown error",
-      responseTime: 0,
-    };
-  });
-
-  const allHealthy = services.every((s) => s.status === "up");
-
-  return res.status(allHealthy ? 200 : 503).json({
-    status: allHealthy ? "healthy" : "unhealthy",
-    timestamp: new Date().toISOString(),
-    services,
-  });
+  return res
+    .status(result.status === "healthy" ? 200 : 503)
+    .json(result);
 });

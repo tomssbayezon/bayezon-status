@@ -4,11 +4,14 @@
   "description": "",
   "license": "ISC",
   "author": "Akshay",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "functions-framework --target=healthCheck",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
     "@google-cloud/functions-framework": "^2.0.0"
