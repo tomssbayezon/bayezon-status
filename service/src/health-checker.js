@@ -82,6 +82,7 @@ export class HealthChecker {
         url,
         status: "down",
         statusCode: null,
+        bodyStatus: null,
         error:
           error?.name === "AbortError"
             ? "Request timed out"
@@ -96,23 +97,8 @@ export class HealthChecker {
    * @returns {Promise<AggregateResult>} Overall health and per-service status
    */
   async checkAll() {
-    const settled = await Promise.allSettled(
+    const services = await Promise.all(
       this.#endpoints.map((url) => this.#checkEndpoint(url)),
-    );
-
-    const services = settled.flatMap((result) =>
-      result.status === "fulfilled"
-        ? [result.value]
-        : [
-            {
-              url: "unknown",
-              status: "down",
-              statusCode: null,
-              bodyStatus: null,
-              error: result.reason?.message ?? "Unknown error",
-              responseTime: 0,
-            },
-          ],
     );
 
     const allHealthy = services.every(({ status }) => status === "up");

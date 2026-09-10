@@ -19,11 +19,14 @@ const NAMESPACES = Object.freeze(["storefront", "search"]);
 
 /**
  * Prepend http:// to scheme-less URLs so native fetch accepts them.
+ * Trims surrounding whitespace first.
  * @param {string} url - Endpoint URL
  * @returns {string} Normalized absolute URL
  */
-export const normalizeUrl = (url) =>
-  /^https?:\/\//i.test(url) ? url : `http://${url}`;
+export const normalizeUrl = (url) => {
+  const trimmed = url.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+};
 
 /**
  * Parses a comma-separated string of URLs into a clean array.
@@ -39,6 +42,18 @@ export const parseEndpoints = (raw) =>
     .map(normalizeUrl);
 
 /**
+ * Parses a timeout in milliseconds, returning null for missing or invalid
+ * values instead of NaN.
+ * @param {string | undefined} raw - Raw timeout value from the environment
+ * @returns {number | null} Validated timeout in milliseconds, or null
+ */
+export const parseTimeout = (raw) => {
+  if (!raw) return null;
+  const ms = Number(raw);
+  return Number.isInteger(ms) && ms > 0 ? ms : null;
+};
+
+/**
  * Reads the namespace endpoints and shared timeout from the environment.
  * @param {Env} [env] - Environment map (defaults to process.env)
  * @returns {NamespaceConfig} Endpoints per namespace and shared timeout
@@ -49,9 +64,7 @@ export const getConfig = (env = process.env) =>
       name,
       {
         endpoints: parseEndpoints(env[`${name.toUpperCase()}_HEALTH_CHECK_ENDPOINTS`]),
-        timeoutMs: env.HEALTH_CHECK_TIMEOUT_MS
-          ? Number.parseInt(env.HEALTH_CHECK_TIMEOUT_MS, 10)
-          : null,
+        timeoutMs: parseTimeout(env.HEALTH_CHECK_TIMEOUT_MS),
       },
     ]),
   );
