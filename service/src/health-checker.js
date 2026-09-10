@@ -6,6 +6,18 @@
 
 const DEFAULT_OPTIONS = Object.freeze({ timeoutMs: null });
 
+/**
+ * Calculates the percentage of up services, rounded to two decimals.
+ * Returns null when there are no services to measure.
+ * @param {number} upCount - Number of services currently up
+ * @param {number} totalCount - Total number of services
+ * @returns {number | null} Percentage in the 0-100 range, or null
+ */
+export const computeUpPercentage = (upCount, totalCount) => {
+  if (totalCount === 0) return null;
+  return Math.round((upCount / totalCount) * 10_000) / 100;
+};
+
 export class HealthChecker {
   #endpoints;
   #timeoutMs;
@@ -104,9 +116,11 @@ export class HealthChecker {
     );
 
     const allHealthy = services.every(({ status }) => status === "up");
+    const upCount = services.filter(({ status }) => status === "up").length;
 
     return {
       status: allHealthy ? "healthy" : "unhealthy",
+      upPercentage: computeUpPercentage(upCount, services.length),
       timestamp: new Date().toISOString(),
       services,
     };
@@ -115,26 +129,47 @@ export class HealthChecker {
 
 /**
  * Checks every namespace concurrently and aggregates the results.
- * An empty namespace is reported as healthy with no services.
+ * An empty namespace is reported as healthy with no services and is
+ * excluded from the overall up percentage.
  * @param {Object<string, { endpoints: string[], timeoutMs: number | null }>} namespaces
- * @returns {Promise<{ status: string, timestamp: string, namespaces: Object<string, { status: string, services: unknown[] }> }>}
+ * @returns {Promise<{ status: string, upPercentage: number | null, timestamp: string, namespaces: Object<string, { status: string, upPercentage: number | null, services: unknown[] }> }>}
  */
 export const checkNamespaces = async (namespaces) => {
   const entries = await Promise.all(
     Object.entries(namespaces).map(async ([name, { endpoints, timeoutMs }]) => {
       const result =
         endpoints.length === 0
-          ? { status: "healthy", services: [] }
+          ? { status: "healthy", upPercentage: null, services: [] }
           : await new HealthChecker(endpoints, { timeoutMs }).checkAll();
-      return [name, { status: result.status, services: result.services }];
+      return [
+        name,
+        {
+          status: result.status,
+          upPercentage: result.upPercentage,
+          services: result.services,
+        },
+      ];
     }),
   );
 
   const namespaced = Object.fromEntries(entries);
   const allHealthy = Object.values(namespaced).every(({ status }) => status === "healthy");
 
+  const totals = Object.values(namespaced).reduce(
+    ({ upCount, totalCount }, { services }) => {
+      if (services.length === 0) return { upCount, totalCount };
+      const up = services.filter(({ status }) => status === "up").length;
+      return {
+        upCount: upCount + up,
+        totalCount: totalCount + services.length,
+      };
+    },
+    { upCount: 0, totalCount: 0 },
+  );
+
   return {
     status: allHealthy ? "healthy" : "unhealthy",
+    upPercentage: computeUpPercentage(totals.upCount, totals.totalCount),
     timestamp: new Date().toISOString(),
     namespaces: namespaced,
   };
