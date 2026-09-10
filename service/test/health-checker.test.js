@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { beforeEach, afterEach, test } from "node:test";
 
 import { getConfig, normalizeUrl, parseEndpoints } from "../src/config.js";
-import { HealthChecker } from "../src/health-checker.js";
+import { checkNamespaces, HealthChecker } from "../src/health-checker.js";
 
 let server;
 let baseUrl;
@@ -68,20 +68,21 @@ test("normalizeUrl leaves http/https URLs untouched", () => {
   assert.equal(normalizeUrl("localhost:8080"), "http://localhost:8080");
 });
 
-test("getConfig reads endpoints and optional timeout", () => {
+test("getConfig maps env vars into storefront and search namespaces", () => {
   assert.deepEqual(getConfig({}), {
-    endpoints: [],
-    timeoutMs: null,
+    storefront: { endpoints: [], timeoutMs: null },
+    search: { endpoints: [], timeoutMs: null },
   });
 
   assert.deepEqual(
     getConfig({
-      HEALTH_CHECK_ENDPOINTS: `${baseUrl}/ok`,
+      STOREFRONT_HEALTH_CHECK_ENDPOINTS: `${baseUrl}/ok`,
+      SEARCH_HEALTH_CHECK_ENDPOINTS: `${baseUrl}/ok-capital`,
       HEALTH_CHECK_TIMEOUT_MS: "2500",
     }),
     {
-      endpoints: [`${baseUrl}/ok`],
-      timeoutMs: 2500,
+      storefront: { endpoints: [`${baseUrl}/ok`], timeoutMs: 2500 },
+      search: { endpoints: [`${baseUrl}/ok-capital`], timeoutMs: 2500 },
     },
   );
 });
@@ -159,4 +160,46 @@ test("checkAll aborts slow requests when a timeout is configured", async () => {
   assert.equal(result.status, "unhealthy");
   assert.equal(result.services[0].status, "down");
   assert.equal(result.services[0].error, "Request timed out");
+});
+
+test("checkNamespaces groups results per namespace when all are healthy", async () => {
+  const namespaces = {
+    storefront: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
+    search: { endpoints: [`${baseUrl}/ok-capital`], timeoutMs: null },
+  };
+
+  const result = await checkNamespaces(namespaces);
+
+  assert.equal(result.status, "healthy");
+  assert.deepEqual(Object.keys(result.namespaces).sort(), ["search", "storefront"]);
+  assert.equal(result.namespaces.storefront.status, "healthy");
+  assert.equal(result.namespaces.storefront.services[0].status, "up");
+  assert.equal(result.namespaces.search.status, "healthy");
+  assert.equal(result.namespaces.search.services[0].bodyStatus, "Ok");
+});
+
+test("checkNamespaces reports unhealthy when any namespace is down", async () => {
+  const namespaces = {
+    storefront: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
+    search: { endpoints: [`${baseUrl}/degraded`], timeoutMs: null },
+  };
+
+  const result = await checkNamespaces(namespaces);
+
+  assert.equal(result.status, "unhealthy");
+  assert.equal(result.namespaces.storefront.status, "healthy");
+  assert.equal(result.namespaces.search.status, "unhealthy");
+  assert.equal(result.namespaces.search.services[0].status, "down");
+});
+
+test("checkNamespaces reports an empty namespace as healthy", async () => {
+  const namespaces = {
+    storefront: { endpoints: [], timeoutMs: null },
+    search: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
+  };
+
+  const result = await checkNamespaces(namespaces);
+
+  assert.equal(result.status, "healthy");
+  assert.deepEqual(result.namespaces.storefront, { status: "healthy", services: [] });
 });

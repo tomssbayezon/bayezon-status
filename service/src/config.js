@@ -8,6 +8,16 @@
  */
 
 /**
+ * @typedef {Object<string, { endpoints: string[], timeoutMs: number | null }>} NamespaceConfig
+ */
+
+/**
+ * Namespaces polled by the health check service.
+ * Each maps to a ${NAME}_HEALTH_CHECK_ENDPOINTS environment variable.
+ */
+const NAMESPACES = Object.freeze(["storefront", "search"]);
+
+/**
  * Prepend http:// to scheme-less URLs so native fetch accepts them.
  * @param {string} url - Endpoint URL
  * @returns {string} Normalized absolute URL
@@ -29,13 +39,19 @@ export const parseEndpoints = (raw) =>
     .map(normalizeUrl);
 
 /**
- * Reads health check configuration from the environment.
+ * Reads the namespace endpoints and shared timeout from the environment.
  * @param {Env} [env] - Environment map (defaults to process.env)
- * @returns {{ endpoints: string[], timeoutMs: number | null }} Parsed config
+ * @returns {NamespaceConfig} Endpoints per namespace and shared timeout
  */
-export const getConfig = (env = process.env) => ({
-  endpoints: parseEndpoints(env.HEALTH_CHECK_ENDPOINTS),
-  timeoutMs: env.HEALTH_CHECK_TIMEOUT_MS
-    ? Number.parseInt(env.HEALTH_CHECK_TIMEOUT_MS, 10)
-    : null,
-});
+export const getConfig = (env = process.env) =>
+  Object.fromEntries(
+    NAMESPACES.map((name) => [
+      name,
+      {
+        endpoints: parseEndpoints(env[`${name.toUpperCase()}_HEALTH_CHECK_ENDPOINTS`]),
+        timeoutMs: env.HEALTH_CHECK_TIMEOUT_MS
+          ? Number.parseInt(env.HEALTH_CHECK_TIMEOUT_MS, 10)
+          : null,
+      },
+    ]),
+  );

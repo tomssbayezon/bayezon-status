@@ -112,3 +112,30 @@ export class HealthChecker {
     };
   }
 }
+
+/**
+ * Checks every namespace concurrently and aggregates the results.
+ * An empty namespace is reported as healthy with no services.
+ * @param {Object<string, { endpoints: string[], timeoutMs: number | null }>} namespaces
+ * @returns {Promise<{ status: string, timestamp: string, namespaces: Object<string, { status: string, services: unknown[] }> }>}
+ */
+export const checkNamespaces = async (namespaces) => {
+  const entries = await Promise.all(
+    Object.entries(namespaces).map(async ([name, { endpoints, timeoutMs }]) => {
+      const result =
+        endpoints.length === 0
+          ? { status: "healthy", services: [] }
+          : await new HealthChecker(endpoints, { timeoutMs }).checkAll();
+      return [name, { status: result.status, services: result.services }];
+    }),
+  );
+
+  const namespaced = Object.fromEntries(entries);
+  const allHealthy = Object.values(namespaced).every(({ status }) => status === "healthy");
+
+  return {
+    status: allHealthy ? "healthy" : "unhealthy",
+    timestamp: new Date().toISOString(),
+    namespaces: namespaced,
+  };
+};
