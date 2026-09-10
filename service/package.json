@@ -7,10 +7,10 @@
   "type": "module",
   "main": "index.js",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.9.0"
   },
   "scripts": {
-    "start": "functions-framework --target=healthCheck",
+    "start": "node --env-file-if-exists=.env node_modules/@google-cloud/functions-framework/build/src/main.js --target=healthCheck",
     "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
