@@ -1,7 +1,7 @@
 import functions from "@google-cloud/functions-framework";
 
 import { getConfig } from "./src/config.js";
-import { checkNamespaces } from "./src/health-checker.js";
+import { checkNamespaces, STATUS_HEALTHY } from "./src/health-checker.js";
 
 /**
  * Health Check Cloud Function.
@@ -31,7 +31,7 @@ export const createHealthHandler = ({
   const result = await checker(config());
 
   return res
-    .status(result.status === "healthy" ? 200 : 503)
+    .status(result.status === STATUS_HEALTHY ? 200 : 503)
     .json(result);
 };
 

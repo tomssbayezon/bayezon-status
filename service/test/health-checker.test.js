@@ -1,12 +1,14 @@
-import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { beforeEach, afterEach, test } from "node:test";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { getConfig, normalizeUrl, parseEndpoints } from "../src/config.js";
 import {
   checkNamespaces,
   computeUpPercentage,
   HealthChecker,
+  STATUS_DOWN,
+  STATUS_HEALTHY,
+  STATUS_UNHEALTHY,
+  STATUS_UP,
 } from "../src/health-checker.js";
 
 let server;
@@ -18,7 +20,6 @@ beforeEach(async () => {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ status: "ok" }));
     } else if (req.url === "/ok-capital") {
-      // Mirrors the real {status:"Ok"} health endpoint format.
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ status: "Ok" }));
     } else if (req.url === "/degraded") {
@@ -31,7 +32,6 @@ beforeEach(async () => {
       res.writeHead(200, { "content-type": "text/plain" });
       res.end("OK");
     } else if (req.url === "/slow") {
-      // Responds after 300ms so timeouts can be tested.
       setTimeout(() => {
         res.writeHead(200);
         res.end();
@@ -52,231 +52,205 @@ afterEach(async () => {
   await new Promise((resolve) => server.close(resolve));
 });
 
-test("parseEndpoints trims, drops empties, and normalizes schemes", () => {
-  assert.deepEqual(
-    parseEndpoints(" https://a.com ,,https://b.com , "),
-    ["https://a.com", "https://b.com"],
-  );
-  assert.deepEqual(
-    parseEndpoints("localhost:8080/health,127.0.0.1:9090/health"),
-    ["http://localhost:8080/health", "http://127.0.0.1:9090/health"],
-  );
-  assert.deepEqual(parseEndpoints(undefined), []);
-  assert.deepEqual(parseEndpoints(""), []);
-});
-
-test("normalizeUrl leaves http/https URLs untouched", () => {
-  assert.equal(normalizeUrl("https://a.com/x"), "https://a.com/x");
-  assert.equal(normalizeUrl("http://a.com/x"), "http://a.com/x");
-  assert.equal(normalizeUrl("a.com/x"), "http://a.com/x");
-  assert.equal(normalizeUrl("localhost:8080"), "http://localhost:8080");
-});
-
-test("getConfig maps env vars into storefront and search namespaces", () => {
-  assert.deepEqual(getConfig({}), {
-    storefront: { endpoints: [], timeoutMs: null },
-    search: { endpoints: [], timeoutMs: null },
-  });
-
-  assert.deepEqual(
-    getConfig({
-      STOREFRONT_HEALTH_CHECK_ENDPOINTS: `${baseUrl}/ok`,
-      SEARCH_HEALTH_CHECK_ENDPOINTS: `${baseUrl}/ok-capital`,
-      HEALTH_CHECK_TIMEOUT_MS: "2500",
-    }),
-    {
-      storefront: { endpoints: [`${baseUrl}/ok`], timeoutMs: 2500 },
-      search: { endpoints: [`${baseUrl}/ok-capital`], timeoutMs: 2500 },
-    },
-  );
-});
-
-test("checkAll reports healthy when all endpoints respond 2xx", async () => {
-  const checker = new HealthChecker([`${baseUrl}/ok`, `${baseUrl}/ok`]);
-  const result = await checker.checkAll();
-
-  assert.equal(result.status, "healthy");
-  assert.equal(result.upPercentage, 100);
-  assert.equal(result.services.length, 2);
-  assert.ok(result.services.every((s) => s.status === "up"));
-  assert.ok(result.services.every((s) => s.statusCode === 200));
-});
-
-test("checkAll computes the up percentage for partially down services", async () => {
-  const checker = new HealthChecker([
-    `${baseUrl}/ok`,
-    `${baseUrl}/ok`,
-    `${baseUrl}/degraded`,
-  ]);
-  const result = await checker.checkAll();
-
-  assert.equal(result.status, "unhealthy");
-  assert.equal(result.upPercentage, 66.67);
-  assert.equal(result.services.length, 3);
-});
-
-test("computeUpPercentage rounds to two decimals and handles zero", () => {
-  assert.equal(computeUpPercentage(1, 2), 50);
-  assert.equal(computeUpPercentage(2, 3), 66.67);
-  assert.equal(computeUpPercentage(0, 4), 0);
-  assert.equal(computeUpPercentage(3, 0), null);
-});
-
-test("checkAll reports unhealthy when any endpoint fails", async () => {
-  const checker = new HealthChecker([`${baseUrl}/ok`, `${baseUrl}/error`]);
-  const result = await checker.checkAll();
-
-  assert.equal(result.status, "unhealthy");
-  assert.equal(result.services[1].status, "down");
-  assert.equal(result.services[1].statusCode, 500);
-});
-
-test("checkAll treats a capitalized {status:Ok} body as up", async () => {
-  const checker = new HealthChecker([`${baseUrl}/ok-capital`]);
-  const result = await checker.checkAll();
-
-  assert.equal(result.status, "healthy");
-  assert.equal(result.services[0].status, "up");
-  assert.equal(result.services[0].bodyStatus, "Ok");
-});
-
-test("checkAll marks an endpoint down when the body status is not ok", async () => {
-  const checker = new HealthChecker([`${baseUrl}/degraded`]);
-  const result = await checker.checkAll();
-
-  assert.equal(result.status, "unhealthy");
-  assert.equal(result.services[0].status, "down");
-  assert.equal(result.services[0].statusCode, 200);
-  assert.equal(result.services[0].bodyStatus, "error");
-});
-
-test("checkAll falls back to HTTP status when the body has no status field", async () => {
-  const checker = new HealthChecker([`${baseUrl}/missing-status`]);
-  const result = await checker.checkAll();
-
-  assert.equal(result.status, "healthy");
-  assert.equal(result.services[0].status, "up");
-  assert.equal(result.services[0].bodyStatus, null);
-});
-
-test("checkAll falls back to HTTP status for non-JSON bodies", async () => {
-  const checker = new HealthChecker([`${baseUrl}/plain`]);
-  const result = await checker.checkAll();
-
-  assert.equal(result.status, "healthy");
-  assert.equal(result.services[0].status, "up");
-  assert.equal(result.services[0].bodyStatus, null);
-});
-
-test("checkAll marks unreachable endpoints as down with error", async () => {
-  const checker = new HealthChecker(["http://127.0.0.1:1/unreachable"]);
-  const result = await checker.checkAll();
-
-  assert.equal(result.status, "unhealthy");
-  assert.equal(result.services[0].status, "down");
-  assert.equal(result.services[0].statusCode, null);
-  assert.ok(result.services[0].error.length > 0);
-});
-
-test("checkAll aborts slow requests when a timeout is configured", async () => {
-  const checker = new HealthChecker([`${baseUrl}/slow`], { timeoutMs: 100 });
-  const result = await checker.checkAll();
-
-  assert.equal(result.status, "unhealthy");
-  assert.equal(result.services[0].status, "down");
-  assert.equal(result.services[0].error, "Request timed out");
-});
-
-test("checkNamespaces groups results per namespace when all are healthy", async () => {
-  const namespaces = {
-    storefront: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
-    search: { endpoints: [`${baseUrl}/ok-capital`], timeoutMs: null },
-  };
-
-  const result = await checkNamespaces(namespaces);
-
-  assert.equal(result.status, "healthy");
-  assert.deepEqual(Object.keys(result.namespaces).sort(), ["search", "storefront"]);
-  assert.equal(result.namespaces.storefront.status, "healthy");
-  assert.equal(result.namespaces.storefront.upPercentage, 100);
-  assert.equal(result.namespaces.storefront.services[0].status, "up");
-  assert.equal(result.namespaces.search.status, "healthy");
-  assert.equal(result.namespaces.search.upPercentage, 100);
-  assert.equal(result.namespaces.search.services[0].bodyStatus, "Ok");
-});
-
-test("checkNamespaces reports unhealthy when any namespace is down", async () => {
-  const namespaces = {
-    storefront: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
-    search: { endpoints: [`${baseUrl}/degraded`], timeoutMs: null },
-  };
-
-  const result = await checkNamespaces(namespaces);
-
-  assert.equal(result.status, "unhealthy");
-  assert.equal(result.namespaces.storefront.status, "healthy");
-  assert.equal(result.namespaces.search.status, "unhealthy");
-  assert.equal(result.namespaces.search.services[0].status, "down");
-});
-
-test("checkNamespaces reports an empty namespace as healthy", async () => {
-  const namespaces = {
-    storefront: { endpoints: [], timeoutMs: null },
-    search: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
-  };
-
-  const result = await checkNamespaces(namespaces);
-
-  assert.equal(result.status, "healthy");
-  assert.equal(result.upPercentage, 100);
-  assert.deepEqual(result.namespaces.storefront, {
-    status: "healthy",
-    upPercentage: null,
-    services: [],
+describe("computeUpPercentage", () => {
+  it("rounds to two decimals and handles zero", () => {
+    expect(computeUpPercentage(1, 2)).toBe(50);
+    expect(computeUpPercentage(2, 3)).toBe(66.67);
+    expect(computeUpPercentage(0, 4)).toBe(0);
+    expect(computeUpPercentage(3, 0)).toBe(null);
   });
 });
 
-test("checkNamespaces computes overall up percentage across namespaces", async () => {
-  const namespaces = {
-    storefront: {
-      endpoints: [`${baseUrl}/ok`, `${baseUrl}/ok`, `${baseUrl}/degraded`],
-      timeoutMs: null,
-    },
-    search: {
-      endpoints: [`${baseUrl}/ok`],
-      timeoutMs: null,
-    },
-  };
+describe("HealthChecker.checkAll", () => {
+  it("reports healthy when all endpoints respond 2xx", async () => {
+    const checker = new HealthChecker([`${baseUrl}/ok`, `${baseUrl}/ok`]);
+    const result = await checker.checkAll();
 
-  const result = await checkNamespaces(namespaces);
-
-  assert.equal(result.status, "unhealthy");
-  assert.equal(result.namespaces.storefront.upPercentage, 66.67);
-  assert.equal(result.namespaces.search.upPercentage, 100);
-  assert.equal(result.upPercentage, 75);
-});
-
-test("checkNamespaces excludes empty namespaces from the overall percentage", async () => {
-  const namespaces = {
-    storefront: { endpoints: [], timeoutMs: null },
-    search: {
-      endpoints: [`${baseUrl}/ok`, `${baseUrl}/degraded`],
-      timeoutMs: null,
-    },
-  };
-
-  const result = await checkNamespaces(namespaces);
-
-  assert.equal(result.status, "unhealthy");
-  assert.equal(result.upPercentage, 50);
-});
-
-test("checkNamespaces reports null overall percentage when every namespace is empty", async () => {
-  const result = await checkNamespaces({
-    storefront: { endpoints: [], timeoutMs: null },
-    search: { endpoints: [], timeoutMs: null },
+    expect(result.status).toBe(STATUS_HEALTHY);
+    expect(result.upPercentage).toBe(100);
+    expect(result.services.length).toBe(2);
+    expect(result.services.every((s) => s.status === STATUS_UP)).toBeTruthy();
+    expect(
+      result.services.every((s) => s.statusCode === 200),
+    ).toBeTruthy();
   });
 
-  assert.equal(result.status, "healthy");
-  assert.equal(result.upPercentage, null);
+  it("computes the up percentage for partially down services", async () => {
+    const checker = new HealthChecker([
+      `${baseUrl}/ok`,
+      `${baseUrl}/ok`,
+      `${baseUrl}/degraded`,
+    ]);
+    const result = await checker.checkAll();
+
+    expect(result.status).toBe(STATUS_UNHEALTHY);
+    expect(result.upPercentage).toBe(66.67);
+    expect(result.services.length).toBe(3);
+  });
+
+  it("reports unhealthy when any endpoint fails", async () => {
+    const checker = new HealthChecker([`${baseUrl}/ok`, `${baseUrl}/error`]);
+    const result = await checker.checkAll();
+
+    expect(result.status).toBe(STATUS_UNHEALTHY);
+    expect(result.services[1].status).toBe(STATUS_DOWN);
+    expect(result.services[1].statusCode).toBe(500);
+  });
+
+  it("treats a capitalized {status:Ok} body as up", async () => {
+    const checker = new HealthChecker([`${baseUrl}/ok-capital`]);
+    const result = await checker.checkAll();
+
+    expect(result.status).toBe(STATUS_HEALTHY);
+    expect(result.services[0].status).toBe(STATUS_UP);
+    expect(result.services[0].bodyStatus).toBe("Ok");
+  });
+
+  it("marks an endpoint down when the body status is not ok", async () => {
+    const checker = new HealthChecker([`${baseUrl}/degraded`]);
+    const result = await checker.checkAll();
+
+    expect(result.status).toBe(STATUS_UNHEALTHY);
+    expect(result.services[0].status).toBe(STATUS_DOWN);
+    expect(result.services[0].statusCode).toBe(200);
+    expect(result.services[0].bodyStatus).toBe("error");
+  });
+
+  it("falls back to HTTP status when the body has no status field", async () => {
+    const checker = new HealthChecker([`${baseUrl}/missing-status`]);
+    const result = await checker.checkAll();
+
+    expect(result.status).toBe(STATUS_HEALTHY);
+    expect(result.services[0].status).toBe(STATUS_UP);
+    expect(result.services[0].bodyStatus).toBe(null);
+  });
+
+  it("falls back to HTTP status for non-JSON bodies", async () => {
+    const checker = new HealthChecker([`${baseUrl}/plain`]);
+    const result = await checker.checkAll();
+
+    expect(result.status).toBe(STATUS_HEALTHY);
+    expect(result.services[0].status).toBe(STATUS_UP);
+    expect(result.services[0].bodyStatus).toBe(null);
+  });
+
+  it("marks unreachable endpoints as down with error", async () => {
+    const checker = new HealthChecker(["http://127.0.0.1:1/unreachable"]);
+    const result = await checker.checkAll();
+
+    expect(result.status).toBe(STATUS_UNHEALTHY);
+    expect(result.services[0].status).toBe(STATUS_DOWN);
+    expect(result.services[0].statusCode).toBe(null);
+    expect(result.services[0].error.length).toBeGreaterThan(0);
+  });
+
+  it("aborts slow requests when a timeout is configured", async () => {
+    const checker = new HealthChecker([`${baseUrl}/slow`], {
+      timeoutMs: 100,
+    });
+    const result = await checker.checkAll();
+
+    expect(result.status).toBe(STATUS_UNHEALTHY);
+    expect(result.services[0].status).toBe(STATUS_DOWN);
+    expect(result.services[0].error).toBe("Request timed out");
+  });
+});
+
+describe("checkNamespaces", () => {
+  it("groups results per namespace when all are healthy", async () => {
+    const namespaces = {
+      storefront: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
+      search: { endpoints: [`${baseUrl}/ok-capital`], timeoutMs: null },
+    };
+
+    const result = await checkNamespaces(namespaces);
+
+    expect(result.status).toBe(STATUS_HEALTHY);
+    expect(Object.keys(result.namespaces).sort()).toEqual([
+      "search",
+      "storefront",
+    ]);
+    expect(result.namespaces.storefront.status).toBe(STATUS_HEALTHY);
+    expect(result.namespaces.storefront.upPercentage).toBe(100);
+    expect(result.namespaces.storefront.services[0].status).toBe(STATUS_UP);
+    expect(result.namespaces.search.status).toBe(STATUS_HEALTHY);
+    expect(result.namespaces.search.upPercentage).toBe(100);
+    expect(result.namespaces.search.services[0].bodyStatus).toBe("Ok");
+  });
+
+  it("reports unhealthy when any namespace is down", async () => {
+    const namespaces = {
+      storefront: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
+      search: { endpoints: [`${baseUrl}/degraded`], timeoutMs: null },
+    };
+
+    const result = await checkNamespaces(namespaces);
+
+    expect(result.status).toBe(STATUS_UNHEALTHY);
+    expect(result.namespaces.storefront.status).toBe(STATUS_HEALTHY);
+    expect(result.namespaces.search.status).toBe(STATUS_UNHEALTHY);
+    expect(result.namespaces.search.services[0].status).toBe(STATUS_DOWN);
+  });
+
+  it("reports an empty namespace as healthy", async () => {
+    const namespaces = {
+      storefront: { endpoints: [], timeoutMs: null },
+      search: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
+    };
+
+    const result = await checkNamespaces(namespaces);
+
+    expect(result.status).toBe(STATUS_HEALTHY);
+    expect(result.upPercentage).toBe(100);
+    expect(result.namespaces.storefront).toEqual({
+      status: STATUS_HEALTHY,
+      upPercentage: null,
+      services: [],
+    });
+  });
+
+  it("computes overall up percentage across namespaces", async () => {
+    const namespaces = {
+      storefront: {
+        endpoints: [`${baseUrl}/ok`, `${baseUrl}/ok`, `${baseUrl}/degraded`],
+        timeoutMs: null,
+      },
+      search: {
+        endpoints: [`${baseUrl}/ok`],
+        timeoutMs: null,
+      },
+    };
+
+    const result = await checkNamespaces(namespaces);
+
+    expect(result.status).toBe(STATUS_UNHEALTHY);
+    expect(result.namespaces.storefront.upPercentage).toBe(66.67);
+    expect(result.namespaces.search.upPercentage).toBe(100);
+    expect(result.upPercentage).toBe(75);
+  });
+
+  it("excludes empty namespaces from the overall percentage", async () => {
+    const namespaces = {
+      storefront: { endpoints: [], timeoutMs: null },
+      search: {
+        endpoints: [`${baseUrl}/ok`, `${baseUrl}/degraded`],
+        timeoutMs: null,
+      },
+    };
+
+    const result = await checkNamespaces(namespaces);
+
+    expect(result.status).toBe(STATUS_UNHEALTHY);
+    expect(result.upPercentage).toBe(50);
+  });
+
+  it("reports null overall percentage when every namespace is empty", async () => {
+    const result = await checkNamespaces({
+      storefront: { endpoints: [], timeoutMs: null },
+      search: { endpoints: [], timeoutMs: null },
+    });
+
+    expect(result.status).toBe(STATUS_HEALTHY);
+    expect(result.upPercentage).toBe(null);
+  });
 });

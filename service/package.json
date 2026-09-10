@@ -11,9 +11,13 @@
   },
   "scripts": {
     "start": "node --env-file-if-exists=.env node_modules/@google-cloud/functions-framework/build/src/main.js --target=healthCheck",
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@google-cloud/functions-framework": "^2.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.0"
   }
 }

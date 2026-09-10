@@ -32,7 +32,7 @@ export const normalizeUrl = (url) => {
  * Parses a comma-separated string of URLs into a clean array.
  * Drops whitespace, empty entries, and normalizes the scheme.
  * @param {string | undefined} raw - Raw comma-separated endpoint URLs
- * @returns {string[]} Validated list of endpoint URLs
+ * @returns {string[]} Normalized list of endpoint URLs
  */
 export const parseEndpoints = (raw) =>
   (raw ?? "")
@@ -55,11 +55,12 @@ export const parseTimeout = (raw) => {
 
 /**
  * Reads the namespace endpoints and shared timeout from the environment.
+ * Logs a warning when a namespace has no configured endpoints.
  * @param {Env} [env] - Environment map (defaults to process.env)
  * @returns {NamespaceConfig} Endpoints per namespace and shared timeout
  */
-export const getConfig = (env = process.env) =>
-  Object.fromEntries(
+export const getConfig = (env = process.env) => {
+  const config = Object.fromEntries(
     NAMESPACES.map((name) => [
       name,
       {
@@ -68,3 +69,15 @@ export const getConfig = (env = process.env) =>
       },
     ]),
   );
+
+  for (const [name, { endpoints }] of Object.entries(config)) {
+    if (endpoints.length === 0) {
+      console.warn(
+        `[config] No endpoints configured for namespace "${name}". ` +
+        `Set ${name.toUpperCase()}_HEALTH_CHECK_ENDPOINTS to monitor services.`,
+      );
+    }
+  }
+
+  return config;
+};

@@ -4,6 +4,11 @@
  * Framework-agnostic and usable outside the Cloud Function context.
  */
 
+export const STATUS_UP = "up";
+export const STATUS_DOWN = "down";
+export const STATUS_HEALTHY = "healthy";
+export const STATUS_UNHEALTHY = "unhealthy";
+
 const DEFAULT_OPTIONS = Object.freeze({ timeoutMs: null });
 
 /**
@@ -16,6 +21,23 @@ const DEFAULT_OPTIONS = Object.freeze({ timeoutMs: null });
 export const computeUpPercentage = (upCount, totalCount) => {
   if (totalCount === 0) return null;
   return Math.round((upCount / totalCount) * 10_000) / 100;
+};
+
+/**
+ * Builds an aggregate result from an array of service results.
+ * @param {Array<{ status: string, bodyStatus: string | null, statusCode: number | null, error?: string, responseTime: number, url: string }>} services
+ * @returns {{ status: string, upPercentage: number | null, timestamp: string, services: typeof services }}
+ */
+const aggregateServices = (services) => {
+  const allHealthy = services.every(({ status }) => status === STATUS_UP);
+  const upCount = services.filter(({ status }) => status === STATUS_UP).length;
+
+  return {
+    status: allHealthy ? STATUS_HEALTHY : STATUS_UNHEALTHY,
+    upPercentage: computeUpPercentage(upCount, services.length),
+    timestamp: new Date().toISOString(),
+    services,
+  };
 };
 
 export class HealthChecker {
@@ -35,7 +57,7 @@ export class HealthChecker {
    * Checks a single endpoint and returns its health status.
    * Never throws; failures are captured in the result.
    * @param {string} url - Endpoint URL to check
-   * @returns {Promise<ServiceResult>} Health result for one service
+   * @returns {Promise<{ status: string, bodyStatus: string | null, statusCode: number | null, error?: string, responseTime: number, url: string }>}
    */
   async #checkEndpoint(url) {
     const start = performance.now();
@@ -54,8 +76,6 @@ export class HealthChecker {
           signal: controller?.signal,
         });
 
-        // TODO: Add custom headers or auth tokens if required by endpoints.
-
         const rawBody = await response.text();
         let bodyStatus;
         try {
@@ -69,7 +89,7 @@ export class HealthChecker {
 
         return {
           url,
-          status: isUp ? "up" : "down",
+          status: isUp ? STATUS_UP : STATUS_DOWN,
           statusCode: response.status,
           bodyStatus: bodyStatus ?? null,
           responseTime: Math.round(performance.now() - start),
@@ -80,7 +100,7 @@ export class HealthChecker {
     } catch (error) {
       return {
         url,
-        status: "down",
+        status: STATUS_DOWN,
         statusCode: null,
         bodyStatus: null,
         error:
@@ -94,22 +114,14 @@ export class HealthChecker {
 
   /**
    * Checks all endpoints concurrently and aggregates the results.
-   * @returns {Promise<AggregateResult>} Overall health and per-service status
+   * @returns {Promise<{ status: string, upPercentage: number | null, timestamp: string, services: Array<{ status: string, url: string, statusCode: number | null, bodyStatus: string | null, error?: string, responseTime: number }> }>}
    */
   async checkAll() {
     const services = await Promise.all(
       this.#endpoints.map((url) => this.#checkEndpoint(url)),
     );
 
-    const allHealthy = services.every(({ status }) => status === "up");
-    const upCount = services.filter(({ status }) => status === "up").length;
-
-    return {
-      status: allHealthy ? "healthy" : "unhealthy",
-      upPercentage: computeUpPercentage(upCount, services.length),
-      timestamp: new Date().toISOString(),
-      services,
-    };
+    return aggregateServices(services);
   }
 }
 
@@ -125,37 +137,28 @@ export const checkNamespaces = async (namespaces) => {
     Object.entries(namespaces).map(async ([name, { endpoints, timeoutMs }]) => {
       const result =
         endpoints.length === 0
-          ? { status: "healthy", upPercentage: null, services: [] }
+          ? { status: STATUS_HEALTHY, upPercentage: null, services: [] }
           : await new HealthChecker(endpoints, { timeoutMs }).checkAll();
-      return [
-        name,
-        {
-          status: result.status,
-          upPercentage: result.upPercentage,
-          services: result.services,
-        },
-      ];
+      return [name, result];
     }),
   );
 
   const namespaced = Object.fromEntries(entries);
-  const allHealthy = Object.values(namespaced).every(({ status }) => status === "healthy");
 
-  const totals = Object.values(namespaced).reduce(
-    ({ upCount, totalCount }, { services }) => {
-      if (services.length === 0) return { upCount, totalCount };
-      const up = services.filter(({ status }) => status === "up").length;
-      return {
-        upCount: upCount + up,
-        totalCount: totalCount + services.length,
-      };
-    },
-    { upCount: 0, totalCount: 0 },
+  const totalCount = Object.values(namespaces).reduce(
+    (count, { endpoints }) =>
+      endpoints.length === 0 ? count : count + endpoints.length,
+    0,
   );
 
+  const allHealthy = Object.values(namespaced).every(({ status }) => status === STATUS_HEALTHY);
+  const upCount = Object.values(namespaced)
+    .flatMap(({ services }) => services)
+    .filter(({ status }) => status === STATUS_UP).length;
+
   return {
-    status: allHealthy ? "healthy" : "unhealthy",
-    upPercentage: computeUpPercentage(totals.upCount, totals.totalCount),
+    status: allHealthy ? STATUS_HEALTHY : STATUS_UNHEALTHY,
+    upPercentage: computeUpPercentage(upCount, totalCount),
     timestamp: new Date().toISOString(),
     namespaces: namespaced,
   };
