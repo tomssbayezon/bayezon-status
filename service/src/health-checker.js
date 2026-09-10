@@ -44,14 +44,22 @@ export class HealthChecker {
 
         // TODO: Add custom headers or auth tokens if required by endpoints.
 
-        // TODO: Parse response body based on each endpoint's response format.
-        // Expected payloads may vary (JSON, plain text, etc.); decide the
-        // up/down criteria once the actual response shapes are known.
+        const rawBody = await response.text();
+        let bodyStatus;
+        try {
+          bodyStatus = JSON.parse(rawBody)?.status ?? undefined;
+        } catch {
+          // Non-JSON body: fall back to the HTTP status below.
+        }
+
+        const bodyOk = bodyStatus?.toString().trim().toLowerCase() === "ok";
+        const isUp = bodyStatus === undefined ? response.ok : bodyOk;
 
         return {
           url,
-          status: response.ok ? "up" : "down",
+          status: isUp ? "up" : "down",
           statusCode: response.status,
+          bodyStatus: bodyStatus ?? null,
           responseTime: Math.round(performance.now() - start),
         };
       } finally {
@@ -88,6 +96,7 @@ export class HealthChecker {
               url: "unknown",
               status: "down",
               statusCode: null,
+              bodyStatus: null,
               error: result.reason?.message ?? "Unknown error",
               responseTime: 0,
             },

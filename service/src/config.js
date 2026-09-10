@@ -8,8 +8,16 @@
  */
 
 /**
+ * Prepend http:// to scheme-less URLs so native fetch accepts them.
+ * @param {string} url - Endpoint URL
+ * @returns {string} Normalized absolute URL
+ */
+export const normalizeUrl = (url) =>
+  /^https?:\/\//i.test(url) ? url : `http://${url}`;
+
+/**
  * Parses a comma-separated string of URLs into a clean array.
- * Drops whitespace and empty entries.
+ * Drops whitespace, empty entries, and normalizes the scheme.
  * @param {string | undefined} raw - Raw comma-separated endpoint URLs
  * @returns {string[]} Validated list of endpoint URLs
  */
@@ -17,7 +25,8 @@ export const parseEndpoints = (raw) =>
   (raw ?? "")
     .split(",")
     .map((url) => url.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map(normalizeUrl);
 
 /**
  * Reads health check configuration from the environment.

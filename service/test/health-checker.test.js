@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { beforeEach, afterEach, test } from "node:test";
 
-import { getConfig, parseEndpoints } from "../src/config.js";
+import { getConfig, normalizeUrl, parseEndpoints } from "../src/config.js";
 import { HealthChecker } from "../src/health-checker.js";
 
 let server;
@@ -13,6 +13,19 @@ beforeEach(async () => {
     if (req.url === "/ok") {
       res.writeHead(200, { "content-type": "application/json" });
       res.end(JSON.stringify({ status: "ok" }));
+    } else if (req.url === "/ok-capital") {
+      // Mirrors the real {status:"Ok"} health endpoint format.
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ status: "Ok" }));
+    } else if (req.url === "/degraded") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ status: "error" }));
+    } else if (req.url === "/missing-status") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ foo: "bar" }));
+    } else if (req.url === "/plain") {
+      res.writeHead(200, { "content-type": "text/plain" });
+      res.end("OK");
     } else if (req.url === "/slow") {
       // Responds after 300ms so timeouts can be tested.
       setTimeout(() => {
@@ -35,13 +48,24 @@ afterEach(async () => {
   await new Promise((resolve) => server.close(resolve));
 });
 
-test("parseEndpoints trims and drops empty entries", () => {
+test("parseEndpoints trims, drops empties, and normalizes schemes", () => {
   assert.deepEqual(
     parseEndpoints(" https://a.com ,,https://b.com , "),
     ["https://a.com", "https://b.com"],
   );
+  assert.deepEqual(
+    parseEndpoints("localhost:8080/health,127.0.0.1:9090/health"),
+    ["http://localhost:8080/health", "http://127.0.0.1:9090/health"],
+  );
   assert.deepEqual(parseEndpoints(undefined), []);
   assert.deepEqual(parseEndpoints(""), []);
+});
+
+test("normalizeUrl leaves http/https URLs untouched", () => {
+  assert.equal(normalizeUrl("https://a.com/x"), "https://a.com/x");
+  assert.equal(normalizeUrl("http://a.com/x"), "http://a.com/x");
+  assert.equal(normalizeUrl("a.com/x"), "http://a.com/x");
+  assert.equal(normalizeUrl("localhost:8080"), "http://localhost:8080");
 });
 
 test("getConfig reads endpoints and optional timeout", () => {
@@ -79,6 +103,43 @@ test("checkAll reports unhealthy when any endpoint fails", async () => {
   assert.equal(result.status, "unhealthy");
   assert.equal(result.services[1].status, "down");
   assert.equal(result.services[1].statusCode, 500);
+});
+
+test("checkAll treats a capitalized {status:Ok} body as up", async () => {
+  const checker = new HealthChecker([`${baseUrl}/ok-capital`]);
+  const result = await checker.checkAll();
+
+  assert.equal(result.status, "healthy");
+  assert.equal(result.services[0].status, "up");
+  assert.equal(result.services[0].bodyStatus, "Ok");
+});
+
+test("checkAll marks an endpoint down when the body status is not ok", async () => {
+  const checker = new HealthChecker([`${baseUrl}/degraded`]);
+  const result = await checker.checkAll();
+
+  assert.equal(result.status, "unhealthy");
+  assert.equal(result.services[0].status, "down");
+  assert.equal(result.services[0].statusCode, 200);
+  assert.equal(result.services[0].bodyStatus, "error");
+});
+
+test("checkAll falls back to HTTP status when the body has no status field", async () => {
+  const checker = new HealthChecker([`${baseUrl}/missing-status`]);
+  const result = await checker.checkAll();
+
+  assert.equal(result.status, "healthy");
+  assert.equal(result.services[0].status, "up");
+  assert.equal(result.services[0].bodyStatus, null);
+});
+
+test("checkAll falls back to HTTP status for non-JSON bodies", async () => {
+  const checker = new HealthChecker([`${baseUrl}/plain`]);
+  const result = await checker.checkAll();
+
+  assert.equal(result.status, "healthy");
+  assert.equal(result.services[0].status, "up");
+  assert.equal(result.services[0].bodyStatus, null);
 });
 
 test("checkAll marks unreachable endpoints as down with error", async () => {
