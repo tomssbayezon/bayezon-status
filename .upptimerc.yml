@@ -2,9 +2,9 @@ owner: tomssbayezon
 repo: bayezon-status
 
 sites:
-  - name: CityBeach Storefront Loader
-    url: https://prod-sunny.bayezon.ai/loader.js
-  - name: Storefront
+  - name: Bayezon Sreach
+    url: https://application-status-page-827172084600.us-central1.run.app
+  - name: Bayezon Storefront
     url: https://application-status-page-827172084600.us-central1.run.app
 
 status-website:
