@@ -4,8 +4,8 @@ repo: bayezon-status
 sites:
   - name: CityBeach Storefront Loader
     url: https://prod-sunny.bayezon.ai/loader.js
-  - name: Rodd & Gunn Storefront Loader
-    url: https://roddandgunn-product-loader.bayezon.com/loader.js
+  - name: Storefront
+    url: https://application-status-page-827172084600.us-central1.run.app
 
 status-website:
   baseUrl: /bayezon-status
