@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
-  checkNamespaces,
+  checkNamespace,
   computeUpPercentage,
   HealthChecker,
   STATUS_DOWN,
@@ -156,101 +156,38 @@ describe("HealthChecker.checkAll", () => {
   });
 });
 
-describe("checkNamespaces", () => {
-  it("groups results per namespace when all are healthy", async () => {
-    const namespaces = {
-      storefront: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
-      search: { endpoints: [`${baseUrl}/ok-capital`], timeoutMs: null },
-    };
-
-    const result = await checkNamespaces(namespaces);
-
-    expect(result.status).toBe(STATUS_HEALTHY);
-    expect(Object.keys(result.namespaces).sort()).toEqual([
-      "search",
-      "storefront",
-    ]);
-    expect(result.namespaces.storefront.status).toBe(STATUS_HEALTHY);
-    expect(result.namespaces.storefront.upPercentage).toBe(100);
-    expect(result.namespaces.storefront.services[0].status).toBe(STATUS_UP);
-    expect(result.namespaces.search.status).toBe(STATUS_HEALTHY);
-    expect(result.namespaces.search.upPercentage).toBe(100);
-    expect(result.namespaces.search.services[0].bodyStatus).toBe("Ok");
-  });
-
-  it("reports unhealthy when any namespace is down", async () => {
-    const namespaces = {
-      storefront: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
-      search: { endpoints: [`${baseUrl}/degraded`], timeoutMs: null },
-    };
-
-    const result = await checkNamespaces(namespaces);
-
-    expect(result.status).toBe(STATUS_UNHEALTHY);
-    expect(result.namespaces.storefront.status).toBe(STATUS_HEALTHY);
-    expect(result.namespaces.search.status).toBe(STATUS_UNHEALTHY);
-    expect(result.namespaces.search.services[0].status).toBe(STATUS_DOWN);
-  });
-
-  it("reports an empty namespace as healthy", async () => {
-    const namespaces = {
-      storefront: { endpoints: [], timeoutMs: null },
-      search: { endpoints: [`${baseUrl}/ok`], timeoutMs: null },
-    };
-
-    const result = await checkNamespaces(namespaces);
+describe("checkNamespace", () => {
+  it("reports a namespace with all healthy endpoints as healthy", async () => {
+    const result = await checkNamespace({
+      endpoints: [`${baseUrl}/ok`, `${baseUrl}/ok-capital`],
+      timeoutMs: null,
+    });
 
     expect(result.status).toBe(STATUS_HEALTHY);
     expect(result.upPercentage).toBe(100);
-    expect(result.namespaces.storefront).toEqual({
-      status: STATUS_HEALTHY,
-      upPercentage: null,
-      services: [],
+    expect(result.services[0].status).toBe(STATUS_UP);
+    expect(result.services[1].bodyStatus).toBe("Ok");
+  });
+
+  it("reports unhealthy when any endpoint in the namespace is down", async () => {
+    const result = await checkNamespace({
+      endpoints: [`${baseUrl}/ok`, `${baseUrl}/degraded`],
+      timeoutMs: null,
     });
-  });
-
-  it("computes overall up percentage across namespaces", async () => {
-    const namespaces = {
-      storefront: {
-        endpoints: [`${baseUrl}/ok`, `${baseUrl}/ok`, `${baseUrl}/degraded`],
-        timeoutMs: null,
-      },
-      search: {
-        endpoints: [`${baseUrl}/ok`],
-        timeoutMs: null,
-      },
-    };
-
-    const result = await checkNamespaces(namespaces);
-
-    expect(result.status).toBe(STATUS_UNHEALTHY);
-    expect(result.namespaces.storefront.upPercentage).toBe(66.67);
-    expect(result.namespaces.search.upPercentage).toBe(100);
-    expect(result.upPercentage).toBe(75);
-  });
-
-  it("excludes empty namespaces from the overall percentage", async () => {
-    const namespaces = {
-      storefront: { endpoints: [], timeoutMs: null },
-      search: {
-        endpoints: [`${baseUrl}/ok`, `${baseUrl}/degraded`],
-        timeoutMs: null,
-      },
-    };
-
-    const result = await checkNamespaces(namespaces);
 
     expect(result.status).toBe(STATUS_UNHEALTHY);
     expect(result.upPercentage).toBe(50);
+    expect(result.services[1].status).toBe(STATUS_DOWN);
   });
 
-  it("reports null overall percentage when every namespace is empty", async () => {
-    const result = await checkNamespaces({
-      storefront: { endpoints: [], timeoutMs: null },
-      search: { endpoints: [], timeoutMs: null },
+  it("reports an empty namespace as healthy with no services", async () => {
+    const result = await checkNamespace({
+      endpoints: [],
+      timeoutMs: null,
     });
 
     expect(result.status).toBe(STATUS_HEALTHY);
     expect(result.upPercentage).toBe(null);
+    expect(result.services).toEqual([]);
   });
 });

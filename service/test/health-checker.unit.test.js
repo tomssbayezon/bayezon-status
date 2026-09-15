@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  checkNamespaces,
+  checkNamespace,
   computeUpPercentage,
   HealthChecker,
   STATUS_DOWN,
@@ -167,80 +167,46 @@ describe("HealthChecker.checkAll", () => {
   });
 });
 
-describe("checkNamespaces", () => {
-  it("groups results per namespace without empty ones", async () => {
+describe("checkNamespace", () => {
+  it("returns the healthy result for a namespace of up endpoints", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
       JSON_BODY({ status: "ok" }),
     );
 
-    const result = await checkNamespaces({
-      storefront: {
-        endpoints: ["http://sf/x", "http://sf/y"],
-        timeoutMs: null,
-      },
-      search: { endpoints: ["http://se/x"], timeoutMs: null },
+    const result = await checkNamespace({
+      endpoints: ["http://sf/x", "http://sf/y"],
+      timeoutMs: null,
     });
 
-    expect(Object.keys(result.namespaces).sort()).toEqual([
-      "search",
-      "storefront",
-    ]);
-    expect(result.namespaces.storefront.upPercentage).toBe(100);
-    expect(result.namespaces.search.upPercentage).toBe(100);
-    expect(result.upPercentage).toBe(100);
     expect(result.status).toBe(STATUS_HEALTHY);
+    expect(result.upPercentage).toBe(100);
+    expect(result.services.every((s) => s.status === STATUS_UP)).toBeTruthy();
   });
 
-  it("computes the combined overall percentage", async () => {
+  it("reflects partial failures in the namespace result", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(async (url) =>
       url.endsWith("/up")
         ? JSON_BODY({ status: "ok" })
         : JSON_BODY({ status: "error" }),
     );
 
-    const result = await checkNamespaces({
-      storefront: {
-        endpoints: ["http://sf/up", "http://sf/up", "http://sf/down"],
-        timeoutMs: null,
-      },
-      search: {
-        endpoints: ["http://se/up"],
-        timeoutMs: null,
-      },
+    const result = await checkNamespace({
+      endpoints: ["http://sf/up", "http://sf/up", "http://sf/down"],
+      timeoutMs: null,
     });
 
-    expect(result.namespaces.storefront.upPercentage).toBe(66.67);
-    expect(result.namespaces.search.upPercentage).toBe(100);
-    expect(result.upPercentage).toBe(75);
+    expect(result.status).toBe(STATUS_UNHEALTHY);
+    expect(result.upPercentage).toBe(66.67);
   });
 
-  it("excludes empty namespaces from the overall percentage", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) =>
-      url.endsWith("/up")
-        ? JSON_BODY({ status: "ok" })
-        : JSON_BODY({ status: "error" }),
-    );
-
-    const result = await checkNamespaces({
-      storefront: { endpoints: [], timeoutMs: null },
-      search: {
-        endpoints: ["http://se/up", "http://se/down"],
-        timeoutMs: null,
-      },
-    });
-
-    expect(result.namespaces.storefront.upPercentage).toBe(null);
-    expect(result.namespaces.search.upPercentage).toBe(50);
-    expect(result.upPercentage).toBe(50);
-  });
-
-  it("reports a null overall percentage when all namespaces are empty", async () => {
-    const result = await checkNamespaces({
-      storefront: { endpoints: [], timeoutMs: null },
-      search: { endpoints: [], timeoutMs: null },
+  it("reports an empty namespace as healthy with no services", async () => {
+    const result = await checkNamespace({
+      endpoints: [],
+      timeoutMs: null,
     });
 
     expect(result.status).toBe(STATUS_HEALTHY);
     expect(result.upPercentage).toBe(null);
+    expect(result.services).toEqual([]);
   });
 });

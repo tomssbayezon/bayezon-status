@@ -1,6 +1,13 @@
 # Health Check Service
 
-Google Cloud Function that aggregates health status from multiple service endpoints across `storefront` and `search` namespaces.
+Google Cloud Function that serves health status for the `storefront` and `search` namespaces at dedicated endpoints.
+
+## Endpoints
+
+| Endpoint | Description |
+|---|---|
+| `/storefront` | Health status for the `storefront` namespace |
+| `/search` | Health status for the `search` namespace |
 
 ## Environment Variables
 
@@ -15,31 +22,27 @@ URLs without a scheme are automatically prefixed with `http://`.
 
 ## Response Shape
 
+Each endpoint returns the health status for its own namespace:
+
 ```json
 {
   "status": "healthy" | "unhealthy",
   "upPercentage": 100.0,
   "timestamp": "2026-01-01T00:00:00.000Z",
-  "namespaces": {
-    "storefront": {
-      "status": "healthy",
-      "upPercentage": 100,
-      "services": [{ "url": "...", "status": "up", "statusCode": 200, "bodyStatus": "ok", "responseTime": 42 }]
-    },
-    "search": { "..." }
-  }
+  "services": [{ "url": "...", "status": "up", "statusCode": 200, "bodyStatus": "ok", "responseTime": 42 }]
 }
 ```
 
 - A service is **up** if its JSON body contains `{ "status": "ok" }` (case-insensitive), or if the HTTP status is 2xx when no body status is present.
-- `upPercentage` is the count of "up" services divided by total services, rounded to 2 decimals. Empty namespaces are excluded.
+- `upPercentage` is the count of "up" services divided by total services, rounded to 2 decimals. An empty namespace reports `null`.
 
 ## HTTP Status Codes
 
 | Code | Meaning |
 |---|---|
-| 200 | All namespaces healthy |
+| 200 | Namespace healthy |
 | 503 | At least one service is down |
+| 404 | Unknown path |
 | 405 | Non-GET request |
 
 ## Local Development
@@ -58,4 +61,4 @@ npm test               # runs unit + integration tests
 
 ## Deploy
 
-Deploy as a Cloud Function with the `healthCheck` HTTP target.
+Deploy as a single Cloud Function with the `healthCheck` HTTP target, routing the `/storefront` and `/search` paths to it.

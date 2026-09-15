@@ -126,40 +126,14 @@ export class HealthChecker {
 }
 
 /**
- * Checks every namespace concurrently and aggregates the results.
- * An empty namespace is reported as healthy with no services and is
- * excluded from the overall up percentage.
- * @param {Object<string, { endpoints: string[], timeoutMs: number | null }>} namespaces
- * @returns {Promise<{ status: string, upPercentage: number | null, timestamp: string, namespaces: Object<string, { status: string, upPercentage: number | null, services: unknown[] }> }>}
+ * Checks a single namespace's endpoints and aggregates the results.
+ * An empty namespace is reported as healthy with no services and a null
+ * up percentage.
+ * @param {{ endpoints: string[], timeoutMs: number | null }} namespace
+ * @returns {Promise<{ status: string, upPercentage: number | null, timestamp: string, services: Array<{ status: string, url: string, statusCode: number | null, bodyStatus: string | null, error?: string, responseTime: number }> }>}
  */
-export const checkNamespaces = async (namespaces) => {
-  const entries = await Promise.all(
-    Object.entries(namespaces).map(async ([name, { endpoints, timeoutMs }]) => {
-      const result =
-        endpoints.length === 0
-          ? { status: STATUS_HEALTHY, upPercentage: null, services: [] }
-          : await new HealthChecker(endpoints, { timeoutMs }).checkAll();
-      return [name, result];
-    }),
-  );
-
-  const namespaced = Object.fromEntries(entries);
-
-  const totalCount = Object.values(namespaces).reduce(
-    (count, { endpoints }) =>
-      endpoints.length === 0 ? count : count + endpoints.length,
-    0,
-  );
-
-  const allHealthy = Object.values(namespaced).every(({ status }) => status === STATUS_HEALTHY);
-  const upCount = Object.values(namespaced)
-    .flatMap(({ services }) => services)
-    .filter(({ status }) => status === STATUS_UP).length;
-
-  return {
-    status: allHealthy ? STATUS_HEALTHY : STATUS_UNHEALTHY,
-    upPercentage: computeUpPercentage(upCount, totalCount),
-    timestamp: new Date().toISOString(),
-    namespaces: namespaced,
-  };
+export const checkNamespace = async ({ endpoints, timeoutMs }) => {
+  return endpoints.length === 0
+    ? { status: STATUS_HEALTHY, upPercentage: null, services: [] }
+    : await new HealthChecker(endpoints, { timeoutMs }).checkAll();
 };
