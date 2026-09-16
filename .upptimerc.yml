@@ -3,9 +3,9 @@ repo: bayezon-status
 
 sites:
   - name: Bayezon Sreach
-    url: https://application-status-page-827172084600.us-central1.run.app
+    url: https://application-status-page-827172084600.us-central1.run.app/search
   - name: Bayezon Storefront
-    url: https://application-status-page-827172084600.us-central1.run.app
+    url: https://application-status-page-827172084600.us-central1.run.app/storefront
 
 status-website:
   baseUrl: /bayezon-status
