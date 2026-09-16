@@ -1,7 +1,7 @@
 [
   {
     "name": "Bayezon Sreach",
-    "url": "https://application-status-page-827172084600.us-central1.run.app",
+    "url": "https://application-status-page-827172084600.us-central1.run.app/search",
     "icon": "https://icons.duckduckgo.com/ip3/application-status-page-827172084600.us-central1.run.app.ico",
     "slug": "bayezon-sreach",
     "status": "up",
@@ -10,16 +10,16 @@
     "uptimeWeek": "100.00%",
     "uptimeMonth": "100.00%",
     "uptimeYear": "100.00%",
-    "time": 1648,
-    "timeDay": 2015,
-    "timeWeek": 1648,
-    "timeMonth": 1648,
-    "timeYear": 1648,
+    "time": 1463,
+    "timeDay": 1462,
+    "timeWeek": 1463,
+    "timeMonth": 1463,
+    "timeYear": 1463,
     "dailyMinutesDown": {}
   },
   {
     "name": "Bayezon Storefront",
-    "url": "https://application-status-page-827172084600.us-central1.run.app",
+    "url": "https://application-status-page-827172084600.us-central1.run.app/storefront",
     "icon": "https://icons.duckduckgo.com/ip3/application-status-page-827172084600.us-central1.run.app.ico",
     "slug": "bayezon-storefront",
     "status": "up",
@@ -28,11 +28,11 @@
     "uptimeWeek": "100.00%",
     "uptimeMonth": "100.00%",
     "uptimeYear": "100.00%",
-    "time": 1548,
-    "timeDay": 1966,
-    "timeWeek": 1548,
-    "timeMonth": 1548,
-    "timeYear": 1548,
+    "time": 1186,
+    "timeDay": 1033,
+    "timeWeek": 1186,
+    "timeMonth": 1186,
+    "timeYear": 1186,
     "dailyMinutesDown": {}
   }
 ]
