@@ -4,35 +4,39 @@
     "url": "https://application-status-page-827172084600.us-central1.run.app/search",
     "icon": "https://icons.duckduckgo.com/ip3/application-status-page-827172084600.us-central1.run.app.ico",
     "slug": "bayezon-sreach",
-    "status": "up",
+    "status": "down",
     "uptime": "100.00%",
-    "uptimeDay": "100.00%",
+    "uptimeDay": "99.98%",
     "uptimeWeek": "100.00%",
     "uptimeMonth": "100.00%",
     "uptimeYear": "100.00%",
-    "time": 1842,
-    "timeDay": 2032,
-    "timeWeek": 1790,
-    "timeMonth": 1898,
-    "timeYear": 1842,
-    "dailyMinutesDown": {}
+    "time": 1798,
+    "timeDay": 1042,
+    "timeWeek": 1572,
+    "timeMonth": 1839,
+    "timeYear": 1798,
+    "dailyMinutesDown": {
+      "2026-10-22": 0
+    }
   },
   {
     "name": "Bayezon Storefront",
     "url": "https://application-status-page-827172084600.us-central1.run.app/storefront",
     "icon": "https://icons.duckduckgo.com/ip3/application-status-page-827172084600.us-central1.run.app.ico",
     "slug": "bayezon-storefront",
-    "status": "up",
+    "status": "down",
     "uptime": "100.00%",
     "uptimeDay": "100.00%",
     "uptimeWeek": "100.00%",
     "uptimeMonth": "100.00%",
     "uptimeYear": "100.00%",
-    "time": 1102,
-    "timeDay": 989,
-    "timeWeek": 987,
-    "timeMonth": 1089,
-    "timeYear": 1102,
-    "dailyMinutesDown": {}
+    "time": 1076,
+    "timeDay": 520,
+    "timeWeek": 870,
+    "timeMonth": 1055,
+    "timeYear": 1076,
+    "dailyMinutesDown": {
+      "2026-10-22": 0
+    }
   }
 ]
