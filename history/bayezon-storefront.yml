@@ -1,7 +1,7 @@
 url: https://application-status-page-827172084600.us-central1.run.app/storefront
-status: down
-code: 500
-responseTime: 51
-lastUpdated: 2026-10-22T22:15:10.795Z
+status: up
+code: 200
+responseTime: 998
+lastUpdated: 2026-10-23T00:39:45.367Z
 startTime: 2026-09-14T10:00:47.956Z
 generator: Upptime <https://github.com/upptime/upptime>
