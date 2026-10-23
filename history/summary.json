@@ -4,19 +4,20 @@
     "url": "https://application-status-page-827172084600.us-central1.run.app/search",
     "icon": "https://icons.duckduckgo.com/ip3/application-status-page-827172084600.us-central1.run.app.ico",
     "slug": "bayezon-sreach",
-    "status": "down",
-    "uptime": "100.00%",
-    "uptimeDay": "99.98%",
-    "uptimeWeek": "100.00%",
-    "uptimeMonth": "100.00%",
-    "uptimeYear": "100.00%",
-    "time": 1798,
-    "timeDay": 1042,
-    "timeWeek": 1572,
-    "timeMonth": 1839,
-    "timeYear": 1798,
+    "status": "up",
+    "uptime": "99.74%",
+    "uptimeDay": "89.95%",
+    "uptimeWeek": "98.56%",
+    "uptimeMonth": "99.67%",
+    "uptimeYear": "99.74%",
+    "time": 1802,
+    "timeDay": 1349,
+    "timeWeek": 1616,
+    "timeMonth": 1843,
+    "timeYear": 1802,
     "dailyMinutesDown": {
-      "2026-10-22": 0
+      "2026-10-23": 40,
+      "2026-10-22": 105
     }
   },
   {
@@ -24,19 +25,20 @@
     "url": "https://application-status-page-827172084600.us-central1.run.app/storefront",
     "icon": "https://icons.duckduckgo.com/ip3/application-status-page-827172084600.us-central1.run.app.ico",
     "slug": "bayezon-storefront",
-    "status": "down",
-    "uptime": "100.00%",
-    "uptimeDay": "100.00%",
-    "uptimeWeek": "100.00%",
-    "uptimeMonth": "100.00%",
-    "uptimeYear": "100.00%",
-    "time": 1076,
-    "timeDay": 520,
-    "timeWeek": 870,
-    "timeMonth": 1055,
-    "timeYear": 1076,
+    "status": "up",
+    "uptime": "99.74%",
+    "uptimeDay": "89.96%",
+    "uptimeWeek": "98.57%",
+    "uptimeMonth": "99.67%",
+    "uptimeYear": "99.74%",
+    "time": 1074,
+    "timeDay": 679,
+    "timeWeek": 885,
+    "timeMonth": 1053,
+    "timeYear": 1074,
     "dailyMinutesDown": {
-      "2026-10-22": 0
+      "2026-10-23": 40,
+      "2026-10-22": 105
     }
   }
 ]
